@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ChatJS - FrontEnd Magazine - DevMedia</title>
+	<link rel="stylesheet" type="text/css" href="chat/public/css/style.css" />
+	<style>
+		html, body{
+	font-family: Arial, Tahoma, sans-serif;
+	margin: 0;
+	padding: 0;
+}
+body{
+	background:#302F31;
+	padding:10px;
+}
+
+form{
+	margin:15px 0;
+}
+form input[type='text']{
+	border:2px solid #45C5BF;
+	border-radius: 5px;
+	padding:5px;
+	width:75%;
+}
+form input[type='submit']{
+	background: #45C5BF;
+	border:none;
+	border-radius: 5px;
+	color:#FFF;
+	cursor:pointer;
+	font-weight: bold;
+	padding:7px 5px;
+	width:19%;
+}
+#historico_mensagens, #lista_usuarios{
+	background: #FFF;
+	border:2px solid #45C5BF;
+	height: 550px;
+	float:left;
+	margin-bottom: 10px;
+	width:100%;
+}
+#sala_chat{
+	display: none;
+}
+#acesso_usuario{
+	height:30px;
+	left:50%;
+	margin-left:-160px;
+	margin-top:-15px;
+	position: fixed;
+	top:50%;
+	width:320px;
+}
+#acesso_usuario form{
+	margin:0;
+}
+
+#historico_mensagens{
+	border-right: 0;
+}
+#lista_usuarios{
+border-left: 1px solid #45C5BF;
+	height: 554px;
+	width: 20%;
+}
+
+#historico_mensagens .sistema{
+	background-color: #45C5BF;
+	color: #FFF;
+	font-weight: bold;
+}
+
+#historico_mensagens .privada{
+	background-color: #CCC;
+	color: #000;
+	font-weight: bold;
+}
+	</style>
+</head>
+<body>
+	<!-- Div com o formulário de acesso, para inserir o apelido -->
+	<div id='acesso_usuario'>
+		<form id='login'>
+			<input type='text' placeholder='Insira seu apelido' name='apelido' id='apelido' />
+			<input type='submit' value='Entrar' />
+		</form>
+	</div>
+	<!-- Div principal onde fica o painel de mensagens e lista de usuários -->
+	<div id='sala_chat'>
+		<div id="historico_mensagens"></div>
+		<select multiple="multiple" id='lista_usuarios'><option value=''>Todos</option></select>
+		<form id='chat'>
+			<input type='text' id='texto_mensagem' name='texto_mensagem' />
+			<input type='submit' value='Enviar mensagem!' />	
+		</form>
+	</div>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	
+	<script type="text/javascript">
+		var socket = io.connect();
+
+
+		// Ao enviar uma mensagem
+		$("form#chat").submit(function(e){
+			e.preventDefault();
+
+			var mensagem = $(this).find("#texto_mensagem").val();
+			var usuario = $("#lista_usuarios").val(); // Usuário selecionado na lista lateral direita
+
+			// Evento acionado no servidor para o envio da mensagem
+			// junto com o nome do usuário selecionado da lista
+			socket.emit("enviar mensagem", {msg: mensagem, usu: usuario}, function(){
+				$("form#chat #texto_mensagem").val("");
+			});
+		});
+
+		// Resposta ao envio de mensagens do servidor
+		socket.on("atualizar mensagens", function(dados){
+			var mensagem_formatada = $("<p />").text(dados.msg).addClass(dados.tipo);
+			$("#historico_mensagens").append(mensagem_formatada);
+		});
+
+		$("form#login").submit(function(e){
+			e.preventDefault();
+
+			// Evento enviado quando o usuário insere um apelido
+			socket.emit("entrar", $(this).find("#apelido").val(), function(valido){
+				if(valido){
+					// Caso não exista nenhum usuário com o mesmo nome, o painel principal é exibido
+					$("#acesso_usuario").hide();
+					$("#sala_chat").show();
+				}else{
+					// Do contrário o campo de mensagens é limpo e é apresentado um alert
+					$("#acesso_usuario").val("");
+					alert("Nome já utilizado nesta sala");
+				}
+			});
+		});
+
+		// Quando servidor enviar uma nova lista de usuários
+		// o select é limpo e reinserida a opção Todos
+		// junto de toda a lista de usuários.
+		socket.on("atualizar usuarios", function(usuarios){
+			$("#lista_usuarios").empty();
+			$("#lista_usuarios").append("<option value=''>Todos</option>");
+				$.each(usuarios, function(indice){
+					var opcao_usuario = $("<option />").text(usuarios[indice]);
+					$("#lista_usuarios").append(opcao_usuario);
+			});
+		});
+
+	</script>
+
+</body>
+</html>
